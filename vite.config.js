@@ -10,7 +10,7 @@ export default defineConfig({
       includeAssets: ['logo192.png', 'logo512.png'],
       manifest: {
         name: "Database Manajemen Peserta Kokuo",
-        short_name: "Peserta Kokuo",
+        short_name: "Kokuo Tc",
         description: "Aplikasi manajemen peserta",
         theme_color: "#111827",
         background_color: "#111827",
