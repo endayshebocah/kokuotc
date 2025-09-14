@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: "./", // <--- penting untuk deploy di Netlify
+  base: "./", // penting untuk memastikan asset JS/CSS bisa di-load di Netlify
   build: {
     outDir: 'dist',
   },
