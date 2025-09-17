@@ -3236,7 +3236,7 @@ const NavMenu = ({ setActiveView, onEditParticipant, activeRecords, uniqueLatest
     };
 
     const handleOpenIsoTc = () => {
-        window.open('https://g.co/gemini/share/d64415f2d04e', '_blank', 'noopener,noreferrer');
+        window.open('https://isotc.netlify.app/', '_blank', 'noopener,noreferrer');
     };
 
     return (
@@ -3798,6 +3798,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
