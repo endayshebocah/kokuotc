@@ -23,6 +23,7 @@ const availablePermissions = [
     { key: 'hasilKerja', label: 'Hasil Kerja Trainer' },
     { key: 'rangkumanKeahlian', label: 'Rangkuman Keahlian' },
     { key: 'komplainan', label: 'Komplainan' },
+    { key: 'isoTc', label: 'ISO TC' },
     { key: 'perbaikanData', label: 'Perbaikan Data' },
     { key: 'trash', label: 'Tong Sampah' }, { key: 'hapusBeberapa', label: 'Hapus Beberapa Data' },
     { key: 'izinAkses', label: 'Manajemen Izin Akses', adminOnly: true },
@@ -679,7 +680,7 @@ const CekingCard = React.memo(({ record, onCardClick }) => {
     );
 });
 
-const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDelete, onUpdateLatest }) => {
+const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDelete, onUpdateLatest, fromComplaint, onProcessComplaint }) => {
     const { userRole, showToast, db, openModal, closeModal, complaints } = useContext(AppContext);
     const [activeTab, setActiveTab] = useState('rincian');
     const [showAssessmentHistory, setShowAssessmentHistory] = useState(false);
@@ -1020,10 +1021,19 @@ const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDel
                        </button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                       <button onClick={() => { onUpdateLatest(activeRecord); onClose(); }} className="px-4 py-2 text-sm bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Update Terbaru</button>
-                       <button onClick={() => { onEdit(activeRecord); onClose(); }} className="px-4 py-2 text-sm bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Perbaiki</button>
-                       {userRole === 'admin' && (
-                            <button title="Hapus" onClick={() => handleDeleteClick(activeRecord.id, activeRecord.nama)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
+                       {fromComplaint && (
+                            <button onClick={() => onProcessComplaint(participant)} className="px-4 py-2 text-sm bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600">
+                                Proses Komplainan
+                            </button>
+                       )}
+                       {!fromComplaint && (
+                        <>
+                            <button onClick={() => { onUpdateLatest(activeRecord); onClose(); }} className="px-4 py-2 text-sm bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Update Terbaru</button>
+                            <button onClick={() => { onEdit(activeRecord); onClose(); }} className="px-4 py-2 text-sm bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Perbaiki</button>
+                            {userRole === 'admin' && (
+                                <button title="Hapus" onClick={() => handleDeleteClick(activeRecord.id, activeRecord.nama)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
+                            )}
+                        </>
                        )}
                        <button onClick={onClose} className="px-6 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">Tutup</button>
                     </div>
@@ -1123,6 +1133,13 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
         return analysis;
     }, [allRecords, activeParticipants]);
 
+    const branchColors = useMemo(() => [
+        'border-sky-500', 'border-emerald-500', 'border-amber-500', 'border-rose-500', 'border-violet-500', 'border-cyan-500', 'border-lime-500'
+    ], []);
+    const branchTextColors = useMemo(() => [
+        'text-sky-300', 'text-emerald-300', 'text-amber-300', 'text-rose-300', 'text-violet-300', 'text-cyan-300', 'text-lime-300'
+    ], []);
+
     const SkillBadge = ({ skill }) => {
         let colorClass = 'bg-gray-600';
         if (skill === 'Reflexology') colorClass = 'bg-blue-600';
@@ -1151,11 +1168,11 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
                     <div>
                         <h3 className="text-2xl font-bold text-white mb-4">Rincian per Cabang</h3>
                         <div className="space-y-5">
-                            {Object.entries(skillsAnalysis.byBranch).map(([branch, staff], index) => (
-                                <div key={branch} className={`${index % 2 === 0 ? 'bg-gray-900/50' : 'bg-gray-800/60'} rounded-lg overflow-hidden border border-gray-700`}>
-                                    <h4 className="text-2xl font-bold text-sky-300 bg-gray-700/50 px-5 py-4 flex justify-between items-center">
+                            {Object.entries(skillsAnalysis.byBranch).sort(([a], [b]) => a.localeCompare(b)).map(([branch, staff], index) => (
+                                <div key={branch} className={`bg-gray-900/50 rounded-lg overflow-hidden border-2 ${branchColors[index % branchColors.length]}`}>
+                                    <h4 className={`text-2xl font-bold ${branchTextColors[index % branchTextColors.length]} bg-gray-800/60 px-5 py-4 flex justify-between items-center`}>
                                         <span>{branch}</span>
-                                        <span className="text-base bg-sky-500 px-3 py-1 rounded-full">{staff.length} Staf</span>
+                                        <span className={`text-lg font-bold bg-white/10 px-4 py-1.5 rounded-full`}>{staff.length} Staf</span>
                                     </h4>
                                     <div className="px-5 divide-y divide-gray-700/50">
                                         {staff.map(person => (
@@ -2233,13 +2250,28 @@ const AssessmentPopup = ({ onSave, onClose, initialData, evaluationStatus }) => 
                                         <button key={opt} onClick={() => handleRatingChange(cat.key, opt)} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all flex-grow ${assessmentData.ratings[cat.key] === opt ? 'text-white ' + (opt === 'Baik' ? 'bg-green-500' : opt === 'Cukup' ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}`}>{opt}</button>
                                     ))}
                                 </div>
-                                <input type="text" value={assessmentData.manualNotes[cat.key] || ''} onChange={(e) => handleManualNoteChange(cat.key, e.target.value)} placeholder="Tambah catatan spesifik (opsional)..." className="w-full input-rounded-border !py-2 !text-sm"/>
+                                <textarea 
+                                    value={assessmentData.manualNotes[cat.key] || ''} 
+                                    onChange={(e) => handleManualNoteChange(cat.key, e.target.value)} 
+                                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }}
+                                    placeholder="Tambah catatan spesifik (opsional)..." 
+                                    className="w-full input-rounded-border !py-2 !text-sm resize-none overflow-hidden"
+                                    rows="1"
+                                />
                             </div>
                         ))}
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-700 flex-shrink-0">
                         <label className="block mb-2 font-semibold text-white">Catatan / Ulasan Akhir (Opsional)</label>
-                        <textarea name="catatan" value={assessmentData.finalNote || ''} onChange={handleFinalNoteChange} placeholder="Ulasan umum bisa diisi manual di sini..." className="w-full textarea-rounded-border h-24"></textarea>
+                        <textarea 
+                            name="catatan" 
+                            value={assessmentData.finalNote || ''} 
+                            onChange={handleFinalNoteChange} 
+                            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px`; }}
+                            placeholder="Ulasan umum bisa diisi manual di sini..." 
+                            className="w-full textarea-rounded-border resize-none"
+                            rows="4"
+                        ></textarea>
                         <div className="flex justify-end gap-3 mt-3">
                             <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">Batal</button>
                             <button onClick={triggerSaveConfirmation} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Simpan Penilaian</button>
@@ -2702,7 +2734,7 @@ const ComplaintFormPopup = ({ onClose, onSave, therapists, branches, initialData
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
         therapistName: '', customerName: '', complaintDate: new Date().toISOString().split('T')[0],
-        cabang: '', complaintDetails: '', status: 'Baru', resolutionDetails: '',
+        cabang: '', complaintCategory: '', complaintDetails: '', status: 'Baru', resolutionDetails: '',
         reportedBy: currentUser?.nama || ''
     });
     const [therapistSuggestions, setTherapistSuggestions] = useState([]);
@@ -2714,6 +2746,7 @@ const ComplaintFormPopup = ({ onClose, onSave, therapists, branches, initialData
                 customerName: initialData.customerName || '',
                 complaintDate: initialData.complaintDate || new Date().toISOString().split('T')[0],
                 cabang: initialData.cabang || '',
+                complaintCategory: initialData.complaintCategory || '',
                 complaintDetails: initialData.complaintDetails || '',
                 status: initialData.status || 'Baru',
                 resolutionDetails: initialData.resolutionDetails || '',
@@ -2776,6 +2809,15 @@ const ComplaintFormPopup = ({ onClose, onSave, therapists, branches, initialData
                         <div><label className="block mb-2 text-gray-300">Nama Customer</label><input type="text" name="customerName" value={formData.customerName} onChange={handleChange} className="w-full input-rounded-border" /></div>
                         <div><label className="block mb-2 text-gray-300">Tanggal Komplain</label><input type="date" name="complaintDate" value={formData.complaintDate} onChange={handleChange} className="w-full input-rounded-border" required /></div>
                     </div>
+                    <div>
+                        <label className="block mb-2 text-gray-300">Kategori Komplain</label>
+                        <select name="complaintCategory" value={formData.complaintCategory} onChange={handleChange} className="w-full select-rounded-border" required>
+                            <option value="">Pilih Kategori</option>
+                            <option value="Reflexology">Reflexology</option>
+                            <option value="Athletic Massage">Athletic Massage</option>
+                            <option value="Seitai">Seitai</option>
+                        </select>
+                    </div>
                     <div><label className="block mb-2 text-gray-300">Detail Komplain</label><textarea name="complaintDetails" value={formData.complaintDetails} onChange={handleChange} className="w-full textarea-rounded-border h-28" required></textarea></div>
                     {initialData && (
                         <>
@@ -2797,7 +2839,7 @@ const ComplaintFormPopup = ({ onClose, onSave, therapists, branches, initialData
     );
 };
 
-const ComplaintCard = ({ complaint, onEdit, onDelete, onShowDetail, photo }) => {
+const ComplaintCard = ({ complaint, onDelete, onShowDetail, photo }) => {
     const { openModal, closeModal } = useContext(AppContext);
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -2825,7 +2867,7 @@ const ComplaintCard = ({ complaint, onEdit, onDelete, onShowDetail, photo }) => 
     
     const handleFollowUpClick = (e) => {
         e.stopPropagation();
-        onEdit(complaint);
+        onShowDetail();
     };
 
     return (
@@ -2836,7 +2878,7 @@ const ComplaintCard = ({ complaint, onEdit, onDelete, onShowDetail, photo }) => 
             <div className="p-3 flex-grow">
                 <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden">
+                        <div className="w-12 h-12 rounded-md bg-gray-700 flex-shrink-0 overflow-hidden">
                            {photo ? <img src={photo} alt={complaint.therapistName} className="w-full h-full object-cover"/> : <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500 m-auto" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>}
                         </div>
                         <div>
@@ -2869,15 +2911,15 @@ const ComplaintCard = ({ complaint, onEdit, onDelete, onShowDetail, photo }) => 
                     </div>
                 )}
             </div>
-            <div className="bg-gray-900/50 p-2 flex justify-end gap-2 rounded-b-lg">
+            <div className="bg-gray-900/50 p-2 flex justify-end items-center gap-2 rounded-b-lg">
+                <button onClick={handleFollowUpClick} className="w-full text-xs px-3 py-1 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700">Tindak Lanjut</button>
                 <button onClick={handleDeleteClick} title="Hapus" className="p-1.5 bg-gray-700 text-red-400 rounded-md hover:bg-red-900/50"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
-                <button onClick={handleFollowUpClick} className="text-xs px-3 py-1 bg-blue-600 rounded-md font-semibold">Tindak Lanjut</button>
             </div>
         </div>
     );
 };
 
-const ComplaintScreen = () => {
+const ComplaintScreen = ({ onProcessComplaint }) => {
     const { complaints, openModal, allRecords, showToast } = useContext(AppContext);
     const { uniqueLatestRecords } = useRecords('', 'semua', '');
     const firestore = useFirestore();
@@ -2906,6 +2948,17 @@ const ComplaintScreen = () => {
         });
     }, [complaints, filterStatus, searchTerm]);
 
+    const complaintsByBranch = useMemo(() => {
+        return filteredComplaints.reduce((acc, c) => {
+            const branch = c.cabang || 'Belum Ditentukan';
+            if (!acc[branch]) acc[branch] = [];
+            acc[branch].push(c);
+            return acc;
+        }, {});
+    }, [filteredComplaints]);
+
+    const sortedBranches = useMemo(() => Object.keys(complaintsByBranch).sort(), [complaintsByBranch]);
+
     const handleSaveComplaint = async (formData, complaintId) => {
         const success = await firestore.addOrUpdateComplaint(complaintId, formData);
         if (success) {
@@ -2922,8 +2975,8 @@ const ComplaintScreen = () => {
         });
     };
     
-    const handleShowDetail = (therapistName) => {
-        const therapistRecord = uniqueLatestRecords.find(r => r.nama === therapistName);
+    const handleShowDetail = (complaint) => {
+        const therapistRecord = uniqueLatestRecords.find(r => r.nama === complaint.therapistName);
         if (therapistRecord) {
             openModal('participantDetail', {
                 participant: therapistRecord, 
@@ -2931,9 +2984,11 @@ const ComplaintScreen = () => {
                 onEdit: (rec) => showToast("Fungsi edit dari halaman ini belum diaktifkan."),
                 onDelete: firestore.softDeleteRecord,
                 onUpdateLatest: (rec) => showToast("Fungsi update dari halaman ini belum diaktifkan."),
+                fromComplaint: true,
+                onProcessComplaint: (participant) => onProcessComplaint(participant, complaint),
             });
         } else {
-            showToast(`Data detail untuk ${therapistName} tidak ditemukan.`);
+            showToast(`Data detail untuk ${complaint.therapistName} tidak ditemukan.`);
         }
     };
 
@@ -2963,19 +3018,25 @@ const ComplaintScreen = () => {
                     </select>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredComplaints.length > 0 ? (
-                    filteredComplaints.map(c => {
-                        const therapist = activeTherapists.find(t => t.nama === c.therapistName);
-                        return <ComplaintCard 
-                                    key={c.id} 
-                                    complaint={c} 
-                                    onEdit={openComplaintForm} 
-                                    onDelete={firestore.deleteComplaint}
-                                    onShowDetail={() => handleShowDetail(c.therapistName)}
-                                    photo={therapist?.photo || null}
-                               />;
-                    })
+            <div className="space-y-6">
+                {sortedBranches.length > 0 ? (
+                    sortedBranches.map(branch => (
+                        <div key={branch}>
+                            <h3 className="text-xl font-bold text-sky-300 mb-3 pl-2 border-l-4 border-sky-500">{branch}</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {complaintsByBranch[branch].map(c => {
+                                    const therapist = activeTherapists.find(t => t.nama === c.therapistName);
+                                    return <ComplaintCard 
+                                                key={c.id} 
+                                                complaint={c} 
+                                                onDelete={firestore.deleteComplaint}
+                                                onShowDetail={() => handleShowDetail(c)}
+                                                photo={therapist?.photo || null}
+                                           />;
+                                })}
+                            </div>
+                        </div>
+                    ))
                 ) : (
                     <p className="col-span-full text-center text-gray-400 py-10">Tidak ada data komplain yang cocok.</p>
                 )}
@@ -3174,6 +3235,10 @@ const NavMenu = ({ setActiveView, onEditParticipant, activeRecords, uniqueLatest
         });
     };
 
+    const handleOpenIsoTc = () => {
+        window.open('https://g.co/gemini/share/d64415f2d04e', '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <div ref={navMenuRef} className="relative">
             <button onClick={() => setIsNavMenuOpen(p => !p)} className="p-3 bg-gray-700 rounded-lg shadow-neumorphic">
@@ -3187,6 +3252,7 @@ const NavMenu = ({ setActiveView, onEditParticipant, activeRecords, uniqueLatest
                    {currentUser?.permissions?.tindakLanjut && <button onClick={() => handleMenuClick(() => openModal('followUpDateRange', { onFetch: reports.handleFetchFollowUp }))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-indigo-500 hover:bg-indigo-600">Tindak Lanjut</button>}
                    {currentUser?.permissions?.hasilKerja && <button onClick={() => handleMenuClick(() => openModal('trainerPerformanceDateRange', { onFetch: reports.handleFetchTrainerPerformanceByDate }))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-indigo-500 hover:bg-indigo-600">Hasil Kerja</button>}
                    {currentUser?.permissions?.rangkumanKeahlian && <button onClick={() => handleMenuClick(() => openModal('skillsSummary', { allRecords, activeParticipants: uniqueLatestRecords }))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-sky-500 hover:bg-sky-600">Rangkuman Keahlian</button>}
+                   {currentUser?.permissions?.isoTc && <button onClick={() => handleMenuClick(handleOpenIsoTc)} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-cyan-500 hover:bg-cyan-600">ISO TC</button>}
                    {currentUser?.permissions?.perbaikanData && <button onClick={() => handleMenuClick(() => openModal('masterData', { records: activeRecords }))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-amber-500 hover:bg-amber-600">Perbaikan Data</button>}
                    {currentUser?.permissions?.izinAkses && <button onClick={() => handleMenuClick(() => setActiveView('izinAkses'))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-violet-500 hover:bg-violet-600">Izin Akses</button>}
                    {currentUser?.permissions?.trash && <button onClick={() => handleMenuClick(() => setActiveView('trash'))} className="w-full text-left px-4 py-2 rounded-md font-semibold text-white bg-rose-500 hover:bg-rose-600">Tong Sampah</button>}
@@ -3204,9 +3270,10 @@ const NavMenu = ({ setActiveView, onEditParticipant, activeRecords, uniqueLatest
 // KOMPONEN UTAMA APLIKASI (Main App Component)
 // =================================================================================
 function AppContent() {
-  const { isRecordsLoading, currentUser, showToast, activityNotifications, setLastSaveTimestamp, postSaveAction, setPostSaveAction, openModal, closeModal, dropdownOptions } = useContext(AppContext);
+  const { isRecordsLoading, currentUser, showToast, activityNotifications, setLastSaveTimestamp, postSaveAction, setPostSaveAction, openModal, closeModal, dropdownOptions, complaints } = useContext(AppContext);
   const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
+  const [complaintBeingProcessed, setComplaintBeingProcessed] = useState(null);
   
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -3270,9 +3337,28 @@ function AppContent() {
         trainer: currentUser?.nama || '',
     });
     setRecordToEdit(null);
+  }, [initialFormState, setFormValues, setRecordToEdit, currentUser]);
+
+  const handleProcessComplaint = useCallback((participant, complaint) => {
+    const firstRecordWithPhoto = allRecords
+        .filter(r => r.nama === participant.nama && r.photo)
+        .sort((a, b) => (a.createdAt?.toDate() || 0) - (b.createdAt?.toDate() || 0))[0];
+
+    setFormValues({
+        ...initialFormState,
+        nama: participant.nama,
+        photo: firstRecordWithPhoto ? firstRecordWithPhoto.photo : (participant.photo || null),
+        status: 'Tahap Ceking',
+        trainer: currentUser?.nama || '',
+        cabang: complaint.cabang || '',
+        cekingType: complaint.complaintCategory || 'Reflexology',
+    });
+    setComplaintBeingProcessed(complaint);
+    setRecordToEdit(null);
     setIsFormExpanded(true);
     if (addFormRef.current) addFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [allRecords, initialFormState, setFormValues, setRecordToEdit, currentUser]);
+    closeModal();
+  }, [allRecords, initialFormState, setFormValues, setRecordToEdit, currentUser, closeModal]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -3325,6 +3411,13 @@ function AppContent() {
     }
   }, [showToast, setFormValues]);
 
+  const handleSaveComplaintAfterUpdate = async (formData, complaintId) => {
+      const success = await firestore.addOrUpdateComplaint(complaintId, formData);
+      if (success) {
+          closeModal();
+      }
+  };
+
   const handleAddOrUpdateRecord = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -3356,9 +3449,19 @@ function AppContent() {
         }
         const success = await firestore.addOrUpdateRecord(recordToEdit ? recordToEdit.id : null, dataToSave);
         if (success) {
+            const processedComplaint = complaintBeingProcessed;
             resetForm();
             setLastSaveTimestamp(Date.now());
-            if (postSaveAction === 'reopenAttendance') {
+            setComplaintBeingProcessed(null);
+
+            if (processedComplaint) {
+                openModal('complaintForm', {
+                    onSave: handleSaveComplaintAfterUpdate,
+                    therapists: activeTherapists,
+                    branches: allBranches,
+                    initialData: processedComplaint,
+                });
+            } else if (postSaveAction === 'reopenAttendance') {
                 openModal('attendance', { participants: attendanceParticipants, locations: allFilterOptions.tc });
                 setPostSaveAction(null);
             }
@@ -3406,6 +3509,19 @@ function AppContent() {
       return Array.from(combined).sort();
   }, [dropdownOptions.trainingDariList, allFilterOptions.tc]);
 
+    const activeTherapists = useMemo(() => {
+        return uniqueLatestRecords.filter(p => !['Resign', 'Ganti Peserta'].includes(p.status));
+    }, [uniqueLatestRecords]);
+    
+    const allBranches = useMemo(() => {
+        const branches = new Set((complaints || []).map(c => c.cabang).filter(Boolean));
+        activeTherapists.forEach(t => {
+            if (t.turunKeCabang) branches.add(t.turunKeCabang);
+            if (t.cabang) branches.add(t.cabang);
+        });
+        return Array.from(branches).sort();
+    }, [complaints, activeTherapists]);
+
     const activeStaffForSummary = useMemo(() => {
         return uniqueLatestRecords.filter(p => {
             const isTraining = p.status.startsWith('Training');
@@ -3433,7 +3549,7 @@ function AppContent() {
         case 'cabang': return <CabangScreen {...screenProps} />;
         case 'izinAkses': return <AccessManagementScreen />;
         case 'jadwal': return <EvaluationScheduleScreen latestRecords={filteredRecords} allRecords={allRecords} onEdit={handleEditClick} onDelete={firestore.softDeleteRecord} onUpdateLatest={handleUpdateLatestClick} />;
-        case 'komplainan': return <ComplaintScreen />;
+        case 'komplainan': return <ComplaintScreen onProcessComplaint={handleProcessComplaint} />;
         case 'trash': return <TrashScreen deletedRecords={deletedRecords} onRestore={firestore.restoreRecord} onDeletePermanent={firestore.deleteRecordPermanent} />;
         default: return null;
     }
@@ -3682,6 +3798,13 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
 
 
 
