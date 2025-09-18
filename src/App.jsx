@@ -999,9 +999,9 @@ const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDel
             <h2 className="text-xl font-bold text-white mb-4 text-center">Riwayat Daftar Hadir</h2>
             {historyLoading ? (<p className="text-center p-8 text-gray-400">Memuat riwayat...</p>) : attendanceHistory.length > 0 ? (
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-900 sticky top-0"><tr><th className="p-2 font-semibold text-gray-300">Tanggal</th><th className="p-2 font-semibold text-gray-300">Status</th><th className="p-2 font-semibold text-gray-300">Keterangan</th></tr></thead>
+                    <thead className="bg-gray-900 sticky top-0"><tr><th className="p-2 font-semibold text-gray-300">Tanggal</th><th className="p-2 font-semibold text-gray-300">Shift</th><th className="p-2 font-semibold text-gray-300">Status</th><th className="p-2 font-semibold text-gray-300">Keterangan</th></tr></thead>
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
-                        {attendanceHistory.map((item, index) => (<tr key={index} className="hover:bg-gray-700/50"><td className="p-2 whitespace-nowrap">{formatFirebaseTimestamp(item.date).date}</td><td className="p-2 whitespace-nowrap">{item.attendanceStatus}</td><td className="p-2">{item.notes || '-'}</td></tr>))}
+                        {attendanceHistory.map((item, index) => (<tr key={index} className="hover:bg-gray-700/50"><td className="p-2 whitespace-nowrap">{formatFirebaseTimestamp(item.date).date}</td><td className="p-2 whitespace-nowrap">{item.shift || '-'}</td><td className="p-2 whitespace-nowrap">{item.attendanceStatus}</td><td className="p-2">{item.notes || '-'}</td></tr>))}
                     </tbody>
                 </table>) : (<p className="text-center p-8 text-gray-400">Tidak ada riwayat kehadiran ditemukan.</p>)}
         </div>
@@ -1531,6 +1531,7 @@ const ReportDisplayPopup = ({ onClose, title, columns, startDate, endDate, locat
             date: formatFirebaseTimestamp(d.date).date,
             location: d.location,
             status: d.attendanceStatus,
+            shift: d.shift || '-',
             notes: d.notes || '-',
             recordedBy: d.recordedBy,
         }));
@@ -1661,6 +1662,7 @@ const AttendancePopup = ({ onClose, tcParticipants, athleticParticipants, seitai
     const { db, showToast, currentUser, openModal } = useContext(AppContext);
     const firestore = useFirestore();
     const [activeList, setActiveList] = useState('TC');
+    const [activeShift, setActiveShift] = useState('Shift 1');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [attendanceData, setAttendanceData] = useState({});
     const [participantToResign, setParticipantToResign] = useState(null);
@@ -1747,6 +1749,7 @@ const AttendancePopup = ({ onClose, tcParticipants, athleticParticipants, seitai
                 batch.set(newAttendanceRef, {
                     participantId: p.id, participantName: p.nama, location: locationForDb,
                     attendanceStatus: data.status, notes: data.notes || '',
+                    shift: activeShift,
                     date: serverTimestamp(), recordedBy: currentUser.nama
                 });
             }
@@ -1774,6 +1777,7 @@ const AttendancePopup = ({ onClose, tcParticipants, athleticParticipants, seitai
                 { header: 'Nama', accessor: 'participantName' },
                 { header: 'Status', accessor: 'status' },
                 { header: 'Tanggal', accessor: 'date' },
+                { header: 'Shift', accessor: 'shift' },
                 { header: 'Lokasi', accessor: 'location' },
                 { header: 'Keterangan', accessor: 'notes' },
                 { header: 'Oleh', accessor: 'recordedBy' }
@@ -1803,6 +1807,11 @@ const AttendancePopup = ({ onClose, tcParticipants, athleticParticipants, seitai
                 <div className="popup-wrapper popup-wrapper-visible bg-gray-800 p-6 rounded-xl shadow-neumorphic w-full max-w-2xl border-2 border-green-500 flex flex-col" onClick={(e) => e.stopPropagation()}>
                     <h2 className="text-2xl font-bold text-center text-green-300 mb-4">Daftar Hadir Peserta</h2>
                     
+                    <div className="flex border-b border-gray-600 mb-4">
+                        <button onClick={() => setActiveShift('Shift 1')} className={`flex-1 py-2 text-center font-semibold ${activeShift === 'Shift 1' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}>Shift 1</button>
+                        <button onClick={() => setActiveShift('Shift 2')} className={`flex-1 py-2 text-center font-semibold ${activeShift === 'Shift 2' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}>Shift 2</button>
+                    </div>
+
                     <div className="flex border-b border-gray-600 mb-4">
                         <button onClick={() => setActiveList('TC')} className={`flex-1 py-2 text-center font-semibold ${activeList === 'TC' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>TC Reguler</button>
                         <button onClick={() => setActiveList('Athletic')} className={`flex-1 py-2 text-center font-semibold ${activeList === 'Athletic' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>Athletic Massage</button>
@@ -3841,6 +3850,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
