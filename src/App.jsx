@@ -710,6 +710,16 @@ const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDel
             .sort((a, b) => (a.createdAt?.toDate() || 0) - (b.createdAt?.toDate() || 0));
     }, [allRecords, participant]);
     
+    const completedStatuses = useMemo(() => {
+        const statuses = new Set();
+        participantHistory.forEach(rec => {
+            if (rec.status) {
+                statuses.add(rec.status);
+            }
+        });
+        return statuses;
+    }, [participantHistory]);
+
     const fullHistory = useMemo(() => {
         if (!participant.nama) return [];
 
@@ -892,9 +902,39 @@ const ParticipantDetailView = ({ participant, allRecords, onClose, onEdit, onDel
             <>
                 <h2 className="text-xl font-bold text-white mb-4 text-center">Rincian Peserta - <span className="text-yellow-300">{determineDisplayStatus(activeRecord)}</span></h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4 text-gray-300">{details}</div>
-                <div className="horizontal-scroll-container flex overflow-x-auto gap-2 p-1 mb-4">
-                    {timelineSteps.map(step => (<button key={step} onClick={() => handleTimelineClick(step)} className={`px-3 py-1 text-xs font-semibold rounded-md whitespace-nowrap ${activeRecord.status === step ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300'}`}>{step}</button>))}
+                
+                {/* Visual Timeline */}
+                <div className="w-full overflow-x-auto pb-4 mb-4">
+                    <div className="flex items-start justify-between min-w-max relative pt-5 px-4">
+                        <div className="absolute top-7 left-0 w-full h-0.5 bg-gray-600"></div>
+                        {timelineSteps.map((step, index) => {
+                            const isCompleted = completedStatuses.has(step);
+                            const isActive = activeRecord.status === step || (step === 'Lulus' && activeRecord.status === 'Lulus');
+                            
+                            const dotClass = isActive 
+                                ? 'bg-blue-500 ring-4 ring-blue-500/50' 
+                                : isCompleted 
+                                ? 'bg-green-500' 
+                                : 'bg-gray-600';
+
+                            const labelClass = (isActive || isCompleted) ? 'text-white' : 'text-gray-500';
+
+                            return (
+                                <div key={index} className="flex-1 flex flex-col items-center text-center cursor-pointer relative group" onClick={() => handleTimelineClick(step)}>
+                                    <div className={`w-5 h-5 rounded-full z-10 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 ${dotClass}`}>
+                                        {isCompleted && !isActive && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <p className={`mt-2 text-xs font-semibold w-24 truncate ${labelClass}`}>{step.replace('Ceking tahap', 'Cek').replace('Evaluasi', 'Eval')}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
+
                 {showAssessmentHistory && (
                     <div className="my-4 p-4 bg-gray-900/50 rounded-lg max-h-64 overflow-y-auto">
                         <h3 className="text-lg font-semibold text-purple-300 mb-3 text-center">Riwayat Penilaian</h3>
@@ -3798,6 +3838,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
