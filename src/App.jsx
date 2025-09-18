@@ -1120,7 +1120,7 @@ const EvaluationCard = React.memo(({ record, onFollowUp, onCardClick }) => {
 
 const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
     const skillsAnalysis = useMemo(() => {
-        const analysis = { masters: [], reflexologyOnly: [], athleticOnly: [], byBranch: {} };
+        const analysis = { masters: [], reflexologyOnly: [], athleticOnly: [], seitaiOnly: [], byBranch: {} };
         if (!activeParticipants || !allRecords) return analysis;
 
         const recordsByName = allRecords.reduce((acc, record) => {
@@ -1145,9 +1145,9 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
             const history = recordsByName[participant.nama] || [];
             const skills = new Set();
             history.forEach(rec => {
-                if (rec.status === 'Lulus' || (rec.status === 'Evaluasi Reflexology' && rec.evaluationResult === 'Lulus')) skills.add('Reflexology');
-                if (rec.status === 'Evaluasi Athletic Massage' && rec.evaluationResult === 'Lulus') skills.add('Athletic Massage');
-                if (rec.status === 'Evaluasi Seitai' && rec.evaluationResult === 'Lulus') skills.add('Seitai');
+                if (rec.status === 'Lulus' || rec.status === 'Evaluasi Reflexology') skills.add('Reflexology');
+                if (rec.status === 'Evaluasi Athletic Massage') skills.add('Athletic Massage');
+                if (rec.status === 'Evaluasi Seitai') skills.add('Seitai');
             });
             return { ...participant, skills: Array.from(skills) };
         });
@@ -1160,6 +1160,7 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
             if (hasReflex && hasAthletic && hasSeitai) analysis.masters.push(p.nama);
             else if (hasReflex && !hasAthletic && !hasSeitai) analysis.reflexologyOnly.push(p.nama);
             else if (!hasReflex && hasAthletic && !hasSeitai) analysis.athleticOnly.push(p.nama);
+            else if (!hasReflex && !hasAthletic && hasSeitai) analysis.seitaiOnly.push(p.nama);
 
             const branch = p.turunKeCabang || p.cabang || 'Belum Ditentukan';
             if (!analysis.byBranch[branch]) analysis.byBranch[branch] = [];
@@ -1169,6 +1170,7 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
         analysis.masters.sort();
         analysis.reflexologyOnly.sort();
         analysis.athleticOnly.sort();
+        analysis.seitaiOnly.sort();
         Object.values(analysis.byBranch).forEach(staffList => staffList.sort((a, b) => a.name.localeCompare(b.name)));
         return analysis;
     }, [allRecords, activeParticipants]);
@@ -1200,10 +1202,11 @@ const SkillsSummaryPopup = ({ onClose, allRecords, activeParticipants }) => {
             <div className="popup-wrapper popup-wrapper-visible bg-gray-800 p-6 rounded-xl shadow-neumorphic w-full max-w-6xl border-2 border-yellow-500 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-3xl font-bold text-center text-yellow-300 mb-6">Rangkuman Keahlian Staf</h2>
                 <div className="flex-grow overflow-auto pr-2 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <SpecialCategorySection title="Master Semua Keahlian" count={skillsAnalysis.masters.length} />
                         <SpecialCategorySection title="Spesialis Reflexology" count={skillsAnalysis.reflexologyOnly.length} />
                         <SpecialCategorySection title="Spesialis Athletic Massage" count={skillsAnalysis.athleticOnly.length} />
+                        <SpecialCategorySection title="Spesialis Seitai" count={skillsAnalysis.seitaiOnly.length} />
                     </div>
                     <div>
                         <h3 className="text-2xl font-bold text-white mb-4">Rincian per Cabang</h3>
@@ -3838,6 +3841,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
