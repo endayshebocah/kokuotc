@@ -7,10 +7,9 @@ import { getFirestore, collection, query, onSnapshot, addDoc, updateDoc, deleteD
 // KONFIGURASI & HELPERS
 // =================================================================================
 
-// Mengambil konfigurasi dari variabel environment yang disediakan oleh Netlify.
-// Nama variabel diubah menjadi FIREBASE_CONFIG agar sesuai aturan Netlify.
-const firebaseConfig = typeof FIREBASE_CONFIG !== 'undefined'
-  ? JSON.parse(FIREBASE_CONFIG)
+// Menyesuaikan nama variabel agar cocok dengan yang tersimpan di Netlify
+const firebaseConfig = typeof firebase_config !== 'undefined'
+  ? JSON.parse(firebase_config)
   : {
     apiKey: "",
     authDomain: "",
@@ -128,7 +127,9 @@ const SpinnerIcon = () => (
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
+    const [app, setApp] = useState(null);
     const [db, setDb] = useState(null);
+    const [initError, setInitError] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
     const [isLoginDataReady, setIsLoginDataReady] = useState(false);
     const [isRecordsLoading, setIsRecordsLoading] = useState(true);
@@ -147,11 +148,31 @@ const AppProvider = ({ children }) => {
     const [dropdownOptions, setDropdownOptions] = useState({ cabangList: [], trainingDariList: [] });
 
 
-    const app = useMemo(() => initializeApp(firebaseConfig), []);
+    useEffect(() => {
+        try {
+            // Menyesuaikan pengecekan agar cocok dengan nama variabel di Netlify
+            if (typeof firebase_config !== 'undefined' && firebase_config) {
+                const config = JSON.parse(firebase_config);
+                if (config.apiKey && config.projectId) {
+                    const firebaseApp = initializeApp(config);
+                    setApp(firebaseApp);
+                } else {
+                    throw new Error("Konfigurasi Firebase tidak valid. Kunci seperti apiKey atau projectId hilang.");
+                }
+            } else {
+                throw new Error("Variabel environment 'firebase_config' tidak ditemukan. Pastikan sudah diatur di Netlify.");
+            }
+        } catch (error) {
+            console.error("Gagal menginisialisasi Firebase:", error);
+            setInitError(error.message);
+        }
+    }, []);
 
     useEffect(() => {
-        const firestoreDb = getFirestore(app);
+        if (!app) return;
+
         const auth = getAuth(app);
+        const firestoreDb = getFirestore(app);
         setDb(firestoreDb);
 
         const performSignIn = async () => {
@@ -163,12 +184,16 @@ const AppProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error("Gagal melakukan autentikasi:", error);
+                setInitError("Gagal melakukan autentikasi: " + error.message);
             }
         };
 
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 setIsAuthReady(true);
+            } else {
+                setIsAuthReady(false);
+                setCurrentUser(null);
             }
         });
 
@@ -245,7 +270,7 @@ const AppProvider = ({ children }) => {
     const openModal = useCallback((type, props = {}) => setModal({ type, props }), []);
     const closeModal = useCallback(() => setModal({ type: null, props: {} }), []);
     
-    const value = { db, app, isAuthReady, isLoginDataReady, isRecordsLoading, records, users, complaints, dropdownOptions, showToast, currentUser, setCurrentUser, userRole, setUserRole, loginStep, setLoginStep, activityNotifications, recordToAutoEdit, setRecordToAutoEdit, lastSaveTimestamp, setLastSaveTimestamp, postSaveAction, setPostSaveAction, modal, openModal, closeModal };
+    const value = { db, app, isAuthReady, isLoginDataReady, isRecordsLoading, records, users, complaints, dropdownOptions, showToast, currentUser, setCurrentUser, userRole, setUserRole, loginStep, setLoginStep, activityNotifications, recordToAutoEdit, setRecordToAutoEdit, lastSaveTimestamp, setLastSaveTimestamp, postSaveAction, setPostSaveAction, modal, openModal, closeModal, initError };
 
     return (
         <AppContext.Provider value={value}>
@@ -3751,7 +3776,25 @@ const ModalManager = () => {
 };
 
 function MainApp() {
-    const { loginStep, isAuthReady, isLoginDataReady } = useContext(AppContext);
+    const { loginStep, isAuthReady, isLoginDataReady, initError } = useContext(AppContext);
+
+    if (initError) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-gray-900 p-4">
+                <div className="w-full max-w-lg p-8 bg-gray-800 rounded-xl shadow-neumorphic border-2 border-red-500 text-center">
+                    <h1 className="text-2xl font-bold text-red-300 mb-4">Gagal Memuat Aplikasi</h1>
+                    <p className="text-gray-300 mb-6">Aplikasi tidak dapat terhubung ke database karena kesalahan konfigurasi.</p>
+                    <div className="bg-gray-900/50 p-4 rounded-lg text-left">
+                        <p className="font-semibold text-white">Detail Kesalahan:</p>
+                        <p className="text-red-400 font-mono text-sm mt-2">{initError}</p>
+                    </div>
+                     <p className="text-sm text-gray-500 mt-6">
+                        <b>Cara Memperbaiki:</b> Pastikan variabel environment <code className="bg-gray-700 p-1 rounded-md text-yellow-300">firebase_config</code> sudah diatur dengan benar di pengaturan situs Netlify Anda dan tidak ada salah ketik.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthReady || !isLoginDataReady) {
         return <LoadingSpinner />;
@@ -3871,6 +3914,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 
