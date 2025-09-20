@@ -7,14 +7,18 @@ import { getFirestore, collection, query, onSnapshot, addDoc, updateDoc, deleteD
 // KONFIGURASI & HELPERS
 // =================================================================================
 
-// Konfigurasi Firebase sekarang diambil dari variabel global __firebase_config
-// yang disediakan oleh environment secara aman. Ini adalah praktik terbaik
-// untuk menjaga kerahasiaan kunci API Anda.
-const firebaseConfig = JSON.parse(
-  typeof __firebase_config !== 'undefined' 
-    ? __firebase_config 
-    : '{}'
-);
+// Mengambil konfigurasi dari variabel environment yang disediakan oleh Netlify.
+// Nama variabel diubah menjadi FIREBASE_CONFIG agar sesuai aturan Netlify.
+const firebaseConfig = typeof FIREBASE_CONFIG !== 'undefined'
+  ? JSON.parse(FIREBASE_CONFIG)
+  : {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  };
 const appId = 'hasil-ceking-peserta-kokuo-v2';
 
 const availablePermissions = [
@@ -3867,6 +3871,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 
