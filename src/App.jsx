@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, where, getDocs, writeBatch, Timestamp, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 // =================================================================================
 // KONFIGURASI & HELPERS
 // =================================================================================
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB6NiW14iWhlhIRE8ViXYEOS5SMvGd2Yq4",
-  authDomain: "database-parfum-fd2f8.firebaseapp.com",
-  projectId: "database-parfum-fd2f8",
-  storageBucket: "database-parfum-fd2f8.appspot.com",
-  messagingSenderId: "461710865000",
-  appId: "1:461710865000:web:fb0d043d07997c986c01dd"
-};
+// Konfigurasi Firebase sekarang diambil dari variabel global __firebase_config
+// yang disediakan oleh environment secara aman. Ini adalah praktik terbaik
+// untuk menjaga kerahasiaan kunci API Anda.
+const firebaseConfig = JSON.parse(
+  typeof __firebase_config !== 'undefined' 
+    ? __firebase_config 
+    : '{}'
+);
 const appId = 'hasil-ceking-peserta-kokuo-v2';
 
 const availablePermissions = [
@@ -149,10 +149,27 @@ const AppProvider = ({ children }) => {
         const firestoreDb = getFirestore(app);
         const auth = getAuth(app);
         setDb(firestoreDb);
+
+        const performSignIn = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Gagal melakukan autentikasi:", error);
+            }
+        };
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) { setIsAuthReady(true); } 
-            else { signInAnonymously(auth).catch((error) => console.error("Gagal masuk secara anonim:", error)); }
+            if (user) {
+                setIsAuthReady(true);
+            }
         });
+
+        performSignIn();
+
         return () => unsubscribe();
     }, [app]);
 
@@ -3850,6 +3867,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 
